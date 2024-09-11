@@ -1,0 +1,757 @@
+<html>
+<head>
+<title>Machine Learning Meets Term Life Insurance.ipynb</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #8c8c8c; font-style: italic;}
+.s1 { color: #080808;}
+.s2 { color: #0033b3;}
+.s3 { color: #067d17;}
+.s4 { color: #1750eb;}
+.s5 { color: #0037a6;}
+</style>
+</head>
+<body bgcolor="#ffffff">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#c0c0c0" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+Machine Learning Meets Term Life Insurance.ipynb</font>
+</center></td></tr></table>
+<pre><span class="s0">#%% md 
+</span><span class="s1">&lt;center&gt;&lt;h1 style=&quot;text-decoration: underline; font-size: 1.8em;&quot;&gt;Machine Learning Meets Term Life &lt;/h1&gt;&lt;/center&gt; &lt;br&gt;  
+&lt;H3 style =&quot;text-align: center&quot;&gt;Targeting High-Value Customers&lt;/H3&gt; &lt;br&gt; 
+&lt;img src=&quot;asset/image.jpg&quot;  alt='Term Life Insurance' width=&quot;2000&quot; height='700'  &gt; 
+ 
+&lt;p style=&quot;font-size: 20px;&quot;&gt;HashSysTech Insurance, a dynamic insurance provider known for its innovative 
+approach, utilizes various outreach methods to promote its term life insurance 
+products. Telemarketing campaigns have proven consistently effective in reaching 
+potential customers. However, due to the high cost associated with these campaigns, 
+HashSysTech seeks to optimize their resources.&lt;p/&gt; 
+ 
+&lt;p style=&quot;font-size: 20px;&quot;&gt;You, a data analyst at HashSysTech, are tasked with developing a machine learning 
+model to predict customer conversion for term life insurance. This model will play a 
+pivotal role in Project Greenlight, an initiative designed to identify customers most 
+likely to accept for term life insurance, allowing HashSysTech to strategically target 
+them via telemarketing campaigns.&lt;p/&gt; 
+</span><span class="s0">#%% md 
+</span><span class="s1">## 1: Importing Modules 
+</span><span class="s0">#%% 
+# Importing Libraries</span>
+<span class="s2">import </span><span class="s1">pandas </span><span class="s2">as </span><span class="s1">pd</span>
+<span class="s2">import </span><span class="s1">matplotlib.pyplot </span><span class="s2">as </span><span class="s1">plt</span>
+<span class="s2">import </span><span class="s1">seaborn </span><span class="s2">as </span><span class="s1">sns</span>
+<span class="s2">from </span><span class="s1">imblearn.over_sampling </span><span class="s2">import </span><span class="s1">SMOTE</span>
+<span class="s2">from </span><span class="s1">sklearn.ensemble </span><span class="s2">import </span><span class="s1">RandomForestClassifier, GradientBoostingClassifier</span>
+<span class="s2">from </span><span class="s1">sklearn.model_selection </span><span class="s2">import </span><span class="s1">train_test_split</span>
+<span class="s2">from </span><span class="s1">sklearn.preprocessing </span><span class="s2">import </span><span class="s1">StandardScaler, OneHotEncoder</span>
+<span class="s2">from </span><span class="s1">sklearn.compose </span><span class="s2">import </span><span class="s1">ColumnTransformer</span>
+<span class="s2">from </span><span class="s1">sklearn.pipeline </span><span class="s2">import </span><span class="s1">Pipeline</span>
+<span class="s2">from </span><span class="s1">sklearn.impute </span><span class="s2">import </span><span class="s1">SimpleImputer</span>
+<span class="s2">import </span><span class="s1">warnings</span>
+<span class="s1">warnings.filterwarnings(</span><span class="s3">'ignore'</span><span class="s1">)</span>
+<span class="s0">#%% md 
+</span><span class="s1">## 2: Load Data 
+</span><span class="s0">#%% 
+# Loading Data</span>
+<span class="s1">data = pd.read_csv(</span><span class="s3">'data/dataset.csv'</span><span class="s1">)</span>
+<span class="s0">#%% md 
+</span><span class="s1">## 3: Data Exploration 
+ 
+### Description of the data 
+The dataset contains marketing campaign information for 45211 customers. The dataset includes respondents' job, marital status, education, call details, and outcomes. It includes both demographic information and details about the marketing interactions, including the type and duration of calls, the number of calls made, and the outcome of previous campaigns. 
+ 
+ 
+* The dataset contains 45211 observations 
+* The dataset is imbalanced towards majority of customers did not convert to term life insurance., therefore f1_scores and Precision-Recall Curve will be used when scoring models and SMOTE (Synthetic Minority Over-sampling Technique) for sampling the data. 
+* All values in the dataset are non-null, numerical and categorical as well. 
+ 
+![image2.png](asset/image2.png) 
+</span><span class="s0">#%% 
+</span><span class="s1">data.head()</span>
+<span class="s0">#%% 
+</span><span class="s1">data.info()</span>
+<span class="s0">#%% md 
+</span><span class="s1">### Summary of DataFrame Structure 
+ 
+The `data.info()` method provides a quick overview of the dataset: 
+- **Entries**: 45,211 rows, indicating the dataset size. 
+- **Columns**: 11 features with no missing values. **But still there are some columns where values are filled with `Unknown` so they are counted as missing values**. We will tackle them later. 
+- **Data Types**: 4 columns are integers (`int64`), and 7 are categorical (`object`). 
+ 
+</span><span class="s0">#%% 
+</span><span class="s1">data.describe()</span>
+<span class="s0">#%% md 
+</span><span class="s1">### Insights from the Statistical Summary 
+ 
+The statistical summary gives us a few important clues about the dataset: 
+- **Age**: With a broad age range centered around 41 years, age could be a significant factor in determining outcomes. We might explore how different age groups respond to the campaign. 
+- **Call Timing**: The calls are fairly evenly spread across the month, but certain days have more activity. This suggests that we could look into whether call timing (specific days) affects the success rate. 
+- **Call Duration**: The significant variation in call duration, ranging from very short to nearly 82 minutes, indicates that call length might influence outcomes. We should analyze whether longer calls lead to more successful interactions. 
+- **Number of Calls**: Most people receive only a few calls, but a few receive many. This suggests a potential analysis on whether increasing the number of calls improves outcomes or if there’s an optimal number. 
+ 
+### Next Steps: 
+- **Analyze Age Groups**: Segment the data by age to see if certain age groups are more responsive. 
+- **Explore Call Timing**: Investigate if there’s an optimal time or day to make calls. 
+- **Evaluate Call Duration**: Determine if there’s a correlation between call length and success, which could help optimize call handling strategies. 
+- **Frequency Analysis**: Assess if the number of calls correlates with outcomes to find an effective call strategy. 
+ 
+These steps will help refine the campaign strategy by focusing on the most influential factors identified in the data. 
+ 
+</span><span class="s0">#%% 
+</span><span class="s1">data.shape</span>
+<span class="s0">#%% md 
+</span><span class="s1">### Dataset Dimensions 
+ 
+The dataset has 45,211 rows and 11 columns. 
+</span><span class="s0">#%% 
+</span><span class="s1">data.nunique()</span>
+<span class="s0">#%% md 
+</span><span class="s1">### Unique Values in Each Column 
+ 
+The `data.nunique()` function reveals the number of unique values in each column: 
+ 
+- **age**: 77 unique values, indicating a broad age distribution. 
+- **job**: 12 unique job categories. 
+- **marital**: 3 unique marital statuses. 
+- **education_qual**: 4 unique education levels. 
+- **call_type**: 3 unique types of calls. 
+- **day**: 31 unique values, representing each day of the month. 
+- **mon**: 12 unique months. 
+- **dur**: 1,573 unique call durations, showing significant variability in call lengths. 
+- **num_calls**: 48 unique values, indicating various levels of call frequency. 
+- **prev_outcome**: 4 unique outcomes from previous campaigns. 
+- **y**: 2 unique values, which likely represents a binary target variable. 
+ 
+### Findings: 
+- **Diverse Features**: The dataset contains a mix of categorical and continuous variables with varying degrees of uniqueness. For example, age, duration (`dur`), and number of calls (`num_calls`) have many unique values, indicating these are continuous or nearly continuous variables, while other columns like marital status, education, and call type are more categorical. 
+- **Potential Analysis**:  
+  - **Age Groups**: Given the 77 unique ages, grouping them into categories (e.g., by decade) might simplify analysis. 
+  - **Call Duration and Outcome**: With many unique call durations, it would be insightful to explore if and how call duration correlates with the target variable (`subscription_status`). 
+  - **Categorical Variables**: The categorical variables with fewer unique values (like job, marital status, and education) are suitable for one-hot encoding or can be used directly in models that handle categorical data well. 
+</span><span class="s0">#%% md 
+</span>
+<span class="s1">#### 3.1: Renaming the column with more appropriate names 
+</span><span class="s0">#%% 
+# Renaming columns to more meaningful names</span>
+<span class="s1">column_mapping = {</span>
+    <span class="s3">'age'</span><span class="s1">: </span><span class="s3">'customer_age'</span><span class="s1">,</span>
+    <span class="s3">'job'</span><span class="s1">: </span><span class="s3">'job_type'</span><span class="s1">,</span>
+    <span class="s3">'marital'</span><span class="s1">: </span><span class="s3">'marital_status'</span><span class="s1">,</span>
+    <span class="s3">'education_qual'</span><span class="s1">: </span><span class="s3">'education_level'</span><span class="s1">,</span>
+    <span class="s3">'call_type'</span><span class="s1">: </span><span class="s3">'contact_method'</span><span class="s1">,</span>
+    <span class="s3">'day'</span><span class="s1">: </span><span class="s3">'call_day'</span><span class="s1">,</span>
+    <span class="s3">'mon'</span><span class="s1">: </span><span class="s3">'call_month'</span><span class="s1">,</span>
+    <span class="s3">'dur'</span><span class="s1">: </span><span class="s3">'call_duration'</span><span class="s1">,</span>
+    <span class="s3">'num_calls'</span><span class="s1">: </span><span class="s3">'number_of_calls'</span><span class="s1">,</span>
+    <span class="s3">'prev_outcome'</span><span class="s1">: </span><span class="s3">'previous_campaign_outcome'</span><span class="s1">,</span>
+    <span class="s3">'y'</span><span class="s1">: </span><span class="s3">'subscription_status'</span>
+<span class="s1">}</span>
+
+<span class="s0"># Renaming the columns</span>
+<span class="s1">data= data.rename(columns=column_mapping)</span>
+
+<span class="s0"># Display the first few rows of the renamed dataset</span>
+<span class="s1">data.head()</span>
+<span class="s0">#%% 
+</span><span class="s1">data_encoded = data.drop(</span><span class="s3">'subscription_status'</span><span class="s1">, axis=</span><span class="s4">1</span><span class="s1">)</span>
+<span class="s2">for </span><span class="s1">column </span><span class="s2">in </span><span class="s1">data_encoded.select_dtypes(include=[</span><span class="s3">'object'</span><span class="s1">]).columns:</span>
+    <span class="s1">data_encoded[column] = data_encoded[column].astype(</span><span class="s3">'category'</span><span class="s1">).cat.codes</span>
+
+<span class="s0"># Calculate correlation matrix</span>
+<span class="s1">corr_matrix = data_encoded.corr()</span>
+
+<span class="s0"># Plot the correlation matrix</span>
+<span class="s1">plt.figure(figsize=(</span><span class="s4">12</span><span class="s1">, </span><span class="s4">8</span><span class="s1">))</span>
+<span class="s1">sns.heatmap(corr_matrix, annot=</span><span class="s2">True</span><span class="s1">, cmap=</span><span class="s3">'coolwarm'</span><span class="s1">, fmt=</span><span class="s3">&quot;.2f&quot;</span><span class="s1">)</span>
+<span class="s1">plt.title(</span><span class="s3">'Correlation Matrix of Dataset'</span><span class="s1">)</span>
+<span class="s1">plt.show()</span>
+<span class="s0">#%% md 
+</span><span class="s1">### Outcomes of the Correlation Heatmap 
+ 
+This heatmap displays the correlation matrix of a dataset, with various features related to customer demographics and call details. Each cell in the matrix shows the correlation coefficient between two variables. Here’s a detailed analysis of the outcomes: 
+ 
+#### 1: Strongest Positive Correlations 
+- **Contact Method and Call Month (0.36)**: Indicates that the method used to contact customers is moderately correlated with the month in which the call is made. This could suggest certain contact methods are preferred or more effective in specific months. 
+- **Previous Campaign Outcome and Contact Method (0.27)**: Suggests that the method of contact has a moderate positive correlation with the outcome of previous campaigns. Certain contact methods might have been more successful previously. 
+- **Number of Calls and Call Day (0.16)**: This indicates that the number of calls is weakly correlated with the day on which calls are made, suggesting there may be days when more calls are made. 
+ 
+#### 2: Strongest Negative Correlations 
+- **Customer Age and Marital Status (-0.40)**: Indicates a moderate negative correlation, suggesting that certain age groups are associated with specific marital statuses. Younger customers might be single, while older customers might be married. 
+- **Customer Age and Education Level (-0.11)**: Indicates a weak negative correlation, suggesting some inverse relationship between age and education level. 
+ 
+#### 3: Notable Correlations 
+- **Education Level and Job Type (0.17)**: Indicates a weak positive correlation, suggesting that certain education levels are associated with specific job types. 
+- **Previous Campaign Outcome and Number of Calls (0.10)**: Indicates a weak positive correlation, suggesting that the success of previous campaigns may influence the number of calls made in the current campaign. 
+- **Call Duration with Various Factors**: 
+  - Weakly correlated with Call Month (0.01), suggesting call durations don’t vary much by month. 
+  - Call Duration with Number of Calls (-0.08): Weak negative correlation, indicating that more calls might lead to shorter call durations, possibly due to efficiency or call saturation. 
+ 
+#### 4: Minimal or No Correlation 
+- Several pairs of variables show minimal to no correlation (near zero), indicating no linear relationship between them. Examples include: 
+  - Customer Age and Call Duration (-0.00) 
+  - Job Type and Marital Status (0.06) 
+  - Call Day and Call Duration (0.01) 
+  - Call Day and Call Month (-0.01) 
+ 
+#### 5: General Observations 
+- **Call-related variables** (Call Day, Call Month, Call Duration, Number of Calls) generally show weak correlations with demographic variables (Customer Age, Job Type, Marital Status, Education Level), suggesting call characteristics might be largely independent of customer demographics. 
+- **Previous Campaign Outcome** shows a moderate positive correlation with Contact Method (0.27) and weak correlations with other variables, indicating that past success may influence certain aspects of the current campaign but not strongly. 
+ 
+</span><span class="s0">#%% md 
+</span><span class="s1">#### 4: Data Cleaning 
+ 
+###### This dataset contain lot of **unknown** values in four columns i.e. 
+   * Job Type 
+   * Education level 
+   * Contact Method 
+   * Previous Campaign Outcome 
+###### So my aim is to fill them with some suitable values using correlation matrix. Explanation is mentioned below. 
+ 
+* **Job Type:** 
+    * Replaced 'unknown' values with the most common **job_type** for the corresponding **education_level**. 
+ 
+* **Education level:** 
+    * Replaced 'unknown' values with the most common **education_level** for the corresponding **job_type** and **marital_status**. 
+ 
+* **Contact Method:** 
+    * Replaced 'unknown' values with the most common **contact_method** for the corresponding **call_month** and **previous_campaign_outcome**. 
+ 
+* **Previous Campaign Outcome:** 
+    * Replaced 'unknown' values with the most common **previous_campaign_outcome** for the corresponding **contact_method** and **number_of_calls**. 
+ 
+</span><span class="s0">#%% md 
+</span><span class="s1">##### 4.1 Visualization of Unique value count in these four column before Value replacing. 
+</span><span class="s0">#%% 
+# Set up the figure</span>
+<span class="s1">fig, axes = plt.subplots(</span><span class="s4">2</span><span class="s1">, </span><span class="s4">2</span><span class="s1">, figsize=(</span><span class="s4">16</span><span class="s1">, </span><span class="s4">15</span><span class="s1">))</span>
+<span class="s1">fig.suptitle(</span><span class="s3">'Distribution of Various Features Before Replacement'</span><span class="s1">, fontsize=</span><span class="s4">16</span><span class="s1">)</span>
+
+<span class="s0"># Plot 1: Distribution of Job Types</span>
+<span class="s1">job_type_dist = data[</span><span class="s3">'job_type'</span><span class="s1">].value_counts()</span>
+<span class="s1">ax1 = sns.countplot(data=data, x=</span><span class="s3">'job_type'</span><span class="s1">, order=job_type_dist.index, ax=axes[</span><span class="s4">0</span><span class="s1">, </span><span class="s4">0</span><span class="s1">])</span>
+<span class="s1">ax1.set_title(</span><span class="s3">'Distribution of Job Types'</span><span class="s1">)</span>
+<span class="s1">ax1.set_xlabel(</span><span class="s3">'Job Type'</span><span class="s1">)</span>
+<span class="s1">ax1.set_ylabel(</span><span class="s3">'Count'</span><span class="s1">)</span>
+<span class="s2">for </span><span class="s1">p </span><span class="s2">in </span><span class="s1">ax1.patches:</span>
+    <span class="s1">ax1.annotate(</span><span class="s3">f'</span><span class="s5">{</span><span class="s1">p.get_height()</span><span class="s5">}</span><span class="s3">'</span><span class="s1">, (p.get_x() + p.get_width() / </span><span class="s4">2.</span><span class="s1">, p.get_height()), </span>
+                 <span class="s1">ha=</span><span class="s3">'center'</span><span class="s1">, va=</span><span class="s3">'center'</span><span class="s1">, xytext=(</span><span class="s4">0</span><span class="s1">, </span><span class="s4">10</span><span class="s1">), textcoords=</span><span class="s3">'offset points'</span><span class="s1">)</span>
+
+<span class="s0"># Plot 2: Distribution of Contact Methods</span>
+<span class="s1">contact_method_dist = data[</span><span class="s3">'contact_method'</span><span class="s1">].value_counts()</span>
+<span class="s1">ax2 = sns.countplot(data=data, x=</span><span class="s3">'contact_method'</span><span class="s1">, order=contact_method_dist.index, ax=axes[</span><span class="s4">0</span><span class="s1">, </span><span class="s4">1</span><span class="s1">])</span>
+<span class="s1">ax2.set_title(</span><span class="s3">'Distribution of Contact Methods'</span><span class="s1">)</span>
+<span class="s1">ax2.set_xlabel(</span><span class="s3">'Contact Method'</span><span class="s1">)</span>
+<span class="s1">ax2.set_ylabel(</span><span class="s3">'Count'</span><span class="s1">)</span>
+<span class="s2">for </span><span class="s1">p </span><span class="s2">in </span><span class="s1">ax2.patches:</span>
+    <span class="s1">ax2.annotate(</span><span class="s3">f'</span><span class="s5">{</span><span class="s1">p.get_height()</span><span class="s5">}</span><span class="s3">'</span><span class="s1">, (p.get_x() + p.get_width() / </span><span class="s4">2.</span><span class="s1">, p.get_height()), </span>
+                 <span class="s1">ha=</span><span class="s3">'center'</span><span class="s1">, va=</span><span class="s3">'center'</span><span class="s1">, xytext=(</span><span class="s4">0</span><span class="s1">, </span><span class="s4">10</span><span class="s1">), textcoords=</span><span class="s3">'offset points'</span><span class="s1">)</span>
+
+<span class="s0"># Plot 3: Distribution of Education Levels</span>
+<span class="s1">education_level_dist = data[</span><span class="s3">'education_level'</span><span class="s1">].value_counts()</span>
+<span class="s1">ax3 = sns.countplot(data=data, x=</span><span class="s3">'education_level'</span><span class="s1">, order=education_level_dist.index, ax=axes[</span><span class="s4">1</span><span class="s1">, </span><span class="s4">0</span><span class="s1">])</span>
+<span class="s1">ax3.set_title(</span><span class="s3">'Distribution of Education Levels'</span><span class="s1">)</span>
+<span class="s1">ax3.set_xlabel(</span><span class="s3">'Education Level'</span><span class="s1">)</span>
+<span class="s1">ax3.set_ylabel(</span><span class="s3">'Count'</span><span class="s1">)</span>
+<span class="s2">for </span><span class="s1">p </span><span class="s2">in </span><span class="s1">ax3.patches:</span>
+    <span class="s1">ax3.annotate(</span><span class="s3">f'</span><span class="s5">{</span><span class="s1">p.get_height()</span><span class="s5">}</span><span class="s3">'</span><span class="s1">, (p.get_x() + p.get_width() / </span><span class="s4">2.</span><span class="s1">, p.get_height()), </span>
+                 <span class="s1">ha=</span><span class="s3">'center'</span><span class="s1">, va=</span><span class="s3">'center'</span><span class="s1">, xytext=(</span><span class="s4">0</span><span class="s1">, </span><span class="s4">10</span><span class="s1">), textcoords=</span><span class="s3">'offset points'</span><span class="s1">)</span>
+
+<span class="s0"># Plot 4: Distribution of Previous Campaign Outcomes</span>
+<span class="s1">prev_outcome_dist = data[</span><span class="s3">'previous_campaign_outcome'</span><span class="s1">].value_counts()</span>
+<span class="s1">ax4 = sns.countplot(data=data, x=</span><span class="s3">'previous_campaign_outcome'</span><span class="s1">, order=prev_outcome_dist.index, ax=axes[</span><span class="s4">1</span><span class="s1">, </span><span class="s4">1</span><span class="s1">])</span>
+<span class="s1">ax4.set_title(</span><span class="s3">'Distribution of Previous Campaign Outcomes'</span><span class="s1">)</span>
+<span class="s1">ax4.set_xlabel(</span><span class="s3">'Previous Campaign Outcome'</span><span class="s1">)</span>
+<span class="s1">ax4.set_ylabel(</span><span class="s3">'Count'</span><span class="s1">)</span>
+<span class="s2">for </span><span class="s1">p </span><span class="s2">in </span><span class="s1">ax4.patches:</span>
+    <span class="s1">ax4.annotate(</span><span class="s3">f'</span><span class="s5">{</span><span class="s1">p.get_height()</span><span class="s5">}</span><span class="s3">'</span><span class="s1">, (p.get_x() + p.get_width() / </span><span class="s4">2.</span><span class="s1">, p.get_height()), </span>
+                 <span class="s1">ha=</span><span class="s3">'center'</span><span class="s1">, va=</span><span class="s3">'center'</span><span class="s1">, xytext=(</span><span class="s4">0</span><span class="s1">, </span><span class="s4">10</span><span class="s1">), textcoords=</span><span class="s3">'offset points'</span><span class="s1">)</span>
+
+<span class="s0"># Adjust layout</span>
+<span class="s1">plt.tight_layout(rect=[</span><span class="s4">0</span><span class="s1">, </span><span class="s4">0</span><span class="s1">, </span><span class="s4">1</span><span class="s1">, </span><span class="s4">0.96</span><span class="s1">])</span>
+<span class="s1">plt.show()</span>
+<span class="s0">#%% md 
+</span><span class="s1">##### 4.2 Filling unknown values. 
+</span><span class="s0">#%% 
+# Fill 'unknown' in 'job_type' column</span>
+<span class="s1">most_common_job_type = data[data[</span><span class="s3">'job_type'</span><span class="s1">] != </span><span class="s3">'unknown'</span><span class="s1">].groupby(</span>
+    <span class="s1">[</span><span class="s3">'education_level'</span><span class="s1">])[</span><span class="s3">'job_type'</span><span class="s1">].agg(</span><span class="s2">lambda </span><span class="s1">x: x.value_counts().idxmax()).reset_index()</span>
+
+<span class="s1">data = data.merge(</span>
+    <span class="s1">most_common_job_type, </span>
+    <span class="s1">on=</span><span class="s3">'education_level'</span><span class="s1">, </span>
+    <span class="s1">how=</span><span class="s3">'left'</span><span class="s1">, </span>
+    <span class="s1">suffixes=(</span><span class="s3">''</span><span class="s1">, </span><span class="s3">'_common'</span><span class="s1">))</span>
+
+<span class="s1">data[</span><span class="s3">'job_type'</span><span class="s1">] = data.apply(</span>
+    <span class="s2">lambda </span><span class="s1">row: row[</span><span class="s3">'job_type_common'</span><span class="s1">] </span><span class="s2">if </span><span class="s1">row[</span><span class="s3">'job_type'</span><span class="s1">] == </span><span class="s3">'unknown' </span><span class="s2">else </span><span class="s1">row[</span><span class="s3">'job_type'</span><span class="s1">], </span>
+    <span class="s1">axis=</span><span class="s4">1</span><span class="s1">)</span>
+
+<span class="s1">data.drop(columns=[</span><span class="s3">'job_type_common'</span><span class="s1">], inplace=</span><span class="s2">True</span><span class="s1">)</span>
+
+<span class="s0"># Fill 'unknown' in 'education_level' column</span>
+<span class="s1">most_common_education_level = data[data[</span><span class="s3">'job_type'</span><span class="s1">] != </span><span class="s3">'unknown'</span><span class="s1">].groupby(</span>
+    <span class="s1">[ </span><span class="s3">'job_type'</span><span class="s1">, </span><span class="s3">'marital_status'</span><span class="s1">])[</span><span class="s3">'education_level'</span><span class="s1">].agg(</span><span class="s2">lambda </span><span class="s1">x: x.value_counts().idxmax()).reset_index()</span>
+
+<span class="s1">data = data.merge(</span>
+    <span class="s1">most_common_education_level, </span>
+    <span class="s1">on=[</span><span class="s3">'job_type'</span><span class="s1">, </span><span class="s3">'marital_status'</span><span class="s1">], </span>
+    <span class="s1">how=</span><span class="s3">'left'</span><span class="s1">, </span>
+    <span class="s1">suffixes=(</span><span class="s3">''</span><span class="s1">, </span><span class="s3">'_common'</span><span class="s1">))</span>
+
+<span class="s1">data[</span><span class="s3">'education_level'</span><span class="s1">] = data.apply(</span>
+    <span class="s2">lambda </span><span class="s1">row: row[</span><span class="s3">'education_level_common'</span><span class="s1">] </span><span class="s2">if </span><span class="s1">row[</span><span class="s3">'education_level'</span><span class="s1">] == </span><span class="s3">'unknown' </span><span class="s2">else </span><span class="s1">row[</span><span class="s3">'education_level'</span><span class="s1">], </span>
+    <span class="s1">axis=</span><span class="s4">1</span><span class="s1">)</span>
+
+<span class="s1">data.drop(columns=[</span><span class="s3">'education_level_common'</span><span class="s1">], inplace=</span><span class="s2">True</span><span class="s1">)</span>
+
+<span class="s0"># Fill 'unknown' in 'contact_method' column</span>
+<span class="s1">most_common_contact_method = data[data[</span><span class="s3">'contact_method'</span><span class="s1">] != </span><span class="s3">'unknown'</span><span class="s1">].groupby(</span>
+    <span class="s1">[</span><span class="s3">'call_month'</span><span class="s1">, </span><span class="s3">'previous_campaign_outcome'</span><span class="s1">])[</span><span class="s3">'contact_method'</span><span class="s1">].agg(</span><span class="s2">lambda </span><span class="s1">x: x.value_counts().idxmax()).reset_index()</span>
+
+<span class="s1">data = data.merge(</span>
+    <span class="s1">most_common_contact_method, </span>
+    <span class="s1">on=[</span><span class="s3">'call_month'</span><span class="s1">, </span><span class="s3">'previous_campaign_outcome'</span><span class="s1">], </span>
+    <span class="s1">how=</span><span class="s3">'left'</span><span class="s1">, </span>
+    <span class="s1">suffixes=(</span><span class="s3">''</span><span class="s1">, </span><span class="s3">'_common'</span><span class="s1">))</span>
+
+<span class="s1">data[</span><span class="s3">'contact_method'</span><span class="s1">] = data.apply(</span>
+    <span class="s2">lambda </span><span class="s1">row: row[</span><span class="s3">'contact_method_common'</span><span class="s1">] </span><span class="s2">if </span><span class="s1">row[</span><span class="s3">'contact_method'</span><span class="s1">] == </span><span class="s3">'unknown' </span><span class="s2">else </span><span class="s1">row[</span><span class="s3">'contact_method'</span><span class="s1">], </span>
+    <span class="s1">axis=</span><span class="s4">1</span><span class="s1">)</span>
+
+<span class="s1">data.drop(columns=[</span><span class="s3">'contact_method_common'</span><span class="s1">], inplace=</span><span class="s2">True</span><span class="s1">)</span>
+
+<span class="s0"># Fill 'unknown' in 'previous_campaign_outcome' column</span>
+<span class="s1">most_common_prev_outcome = data[data[</span><span class="s3">'previous_campaign_outcome'</span><span class="s1">] != </span><span class="s3">'unknown'</span><span class="s1">].groupby(</span>
+    <span class="s1">[</span><span class="s3">'contact_method'</span><span class="s1">, </span><span class="s3">'number_of_calls'</span><span class="s1">])[</span><span class="s3">'previous_campaign_outcome'</span><span class="s1">].agg(</span><span class="s2">lambda </span><span class="s1">x: x.value_counts().idxmax()).reset_index()</span>
+
+<span class="s1">data = data.merge(</span>
+    <span class="s1">most_common_prev_outcome, </span>
+    <span class="s1">on=[</span><span class="s3">'contact_method'</span><span class="s1">, </span><span class="s3">'number_of_calls'</span><span class="s1">], </span>
+    <span class="s1">how=</span><span class="s3">'left'</span><span class="s1">, </span>
+    <span class="s1">suffixes=(</span><span class="s3">''</span><span class="s1">, </span><span class="s3">'_common'</span><span class="s1">))</span>
+
+<span class="s1">data[</span><span class="s3">'previous_campaign_outcome'</span><span class="s1">] = data.apply(</span>
+    <span class="s2">lambda </span><span class="s1">row: row[</span><span class="s3">'previous_campaign_outcome_common'</span><span class="s1">] </span><span class="s2">if </span><span class="s1">row[</span><span class="s3">'previous_campaign_outcome'</span><span class="s1">] == </span><span class="s3">'unknown' </span><span class="s2">else </span><span class="s1">row[</span><span class="s3">'previous_campaign_outcome'</span><span class="s1">], </span>
+    <span class="s1">axis=</span><span class="s4">1</span><span class="s1">)</span>
+
+<span class="s1">data.drop(columns=[</span><span class="s3">'previous_campaign_outcome_common'</span><span class="s1">], inplace=</span><span class="s2">True</span><span class="s1">)</span>
+
+<span class="s0"># Display the first few rows to verify the changes</span>
+<span class="s1">data.head()</span>
+
+<span class="s0">#%% md 
+</span><span class="s1">##### 4.3 Visualization of Unique value count in these four column after Value replacing. 
+</span><span class="s0">#%% 
+# Set up the figure</span>
+<span class="s1">fig, axes = plt.subplots(</span><span class="s4">2</span><span class="s1">, </span><span class="s4">2</span><span class="s1">, figsize=(</span><span class="s4">16</span><span class="s1">, </span><span class="s4">15</span><span class="s1">))</span>
+<span class="s1">fig.suptitle(</span><span class="s3">'Distribution of Various Features After Replacement'</span><span class="s1">, fontsize=</span><span class="s4">16</span><span class="s1">)</span>
+
+<span class="s0"># Plot 1: Distribution of Job Types</span>
+<span class="s1">job_type_dist = data[</span><span class="s3">'job_type'</span><span class="s1">].value_counts()</span>
+<span class="s1">ax1 = sns.countplot(data=data, x=</span><span class="s3">'job_type'</span><span class="s1">, order=job_type_dist.index, ax=axes[</span><span class="s4">0</span><span class="s1">, </span><span class="s4">0</span><span class="s1">])</span>
+<span class="s1">ax1.set_title(</span><span class="s3">'Distribution of Job Types'</span><span class="s1">)</span>
+<span class="s1">ax1.set_xlabel(</span><span class="s3">'Job Type'</span><span class="s1">)</span>
+<span class="s1">ax1.set_ylabel(</span><span class="s3">'Count'</span><span class="s1">)</span>
+<span class="s2">for </span><span class="s1">p </span><span class="s2">in </span><span class="s1">ax1.patches:</span>
+    <span class="s1">ax1.annotate(</span><span class="s3">f'</span><span class="s5">{</span><span class="s1">p.get_height()</span><span class="s5">}</span><span class="s3">'</span><span class="s1">, (p.get_x() + p.get_width() / </span><span class="s4">2.</span><span class="s1">, p.get_height()), </span>
+                 <span class="s1">ha=</span><span class="s3">'center'</span><span class="s1">, va=</span><span class="s3">'center'</span><span class="s1">, xytext=(</span><span class="s4">0</span><span class="s1">, </span><span class="s4">10</span><span class="s1">), textcoords=</span><span class="s3">'offset points'</span><span class="s1">)</span>
+
+<span class="s0"># Plot 2: Distribution of Contact Methods</span>
+<span class="s1">contact_method_dist = data[</span><span class="s3">'contact_method'</span><span class="s1">].value_counts()</span>
+<span class="s1">ax2 = sns.countplot(data=data, x=</span><span class="s3">'contact_method'</span><span class="s1">, order=contact_method_dist.index, ax=axes[</span><span class="s4">0</span><span class="s1">, </span><span class="s4">1</span><span class="s1">])</span>
+<span class="s1">ax2.set_title(</span><span class="s3">'Distribution of Contact Methods'</span><span class="s1">)</span>
+<span class="s1">ax2.set_xlabel(</span><span class="s3">'Contact Method'</span><span class="s1">)</span>
+<span class="s1">ax2.set_ylabel(</span><span class="s3">'Count'</span><span class="s1">)</span>
+<span class="s2">for </span><span class="s1">p </span><span class="s2">in </span><span class="s1">ax2.patches:</span>
+    <span class="s1">ax2.annotate(</span><span class="s3">f'</span><span class="s5">{</span><span class="s1">p.get_height()</span><span class="s5">}</span><span class="s3">'</span><span class="s1">, (p.get_x() + p.get_width() / </span><span class="s4">2.</span><span class="s1">, p.get_height()), </span>
+                 <span class="s1">ha=</span><span class="s3">'center'</span><span class="s1">, va=</span><span class="s3">'center'</span><span class="s1">, xytext=(</span><span class="s4">0</span><span class="s1">, </span><span class="s4">10</span><span class="s1">), textcoords=</span><span class="s3">'offset points'</span><span class="s1">)</span>
+
+<span class="s0"># Plot 3: Distribution of Education Levels</span>
+<span class="s1">education_level_dist = data[</span><span class="s3">'education_level'</span><span class="s1">].value_counts()</span>
+<span class="s1">ax3 = sns.countplot(data=data, x=</span><span class="s3">'education_level'</span><span class="s1">, order=education_level_dist.index, ax=axes[</span><span class="s4">1</span><span class="s1">, </span><span class="s4">0</span><span class="s1">])</span>
+<span class="s1">ax3.set_title(</span><span class="s3">'Distribution of Education Levels'</span><span class="s1">)</span>
+<span class="s1">ax3.set_xlabel(</span><span class="s3">'Education Level'</span><span class="s1">)</span>
+<span class="s1">ax3.set_ylabel(</span><span class="s3">'Count'</span><span class="s1">)</span>
+<span class="s2">for </span><span class="s1">p </span><span class="s2">in </span><span class="s1">ax3.patches:</span>
+    <span class="s1">ax3.annotate(</span><span class="s3">f'</span><span class="s5">{</span><span class="s1">p.get_height()</span><span class="s5">}</span><span class="s3">'</span><span class="s1">, (p.get_x() + p.get_width() / </span><span class="s4">2.</span><span class="s1">, p.get_height()), </span>
+                 <span class="s1">ha=</span><span class="s3">'center'</span><span class="s1">, va=</span><span class="s3">'center'</span><span class="s1">, xytext=(</span><span class="s4">0</span><span class="s1">, </span><span class="s4">10</span><span class="s1">), textcoords=</span><span class="s3">'offset points'</span><span class="s1">)</span>
+
+<span class="s0"># Plot 4: Distribution of Previous Campaign Outcomes</span>
+<span class="s1">prev_outcome_dist = data[</span><span class="s3">'previous_campaign_outcome'</span><span class="s1">].value_counts()</span>
+<span class="s1">ax4 = sns.countplot(data=data, x=</span><span class="s3">'previous_campaign_outcome'</span><span class="s1">, order=prev_outcome_dist.index, ax=axes[</span><span class="s4">1</span><span class="s1">, </span><span class="s4">1</span><span class="s1">])</span>
+<span class="s1">ax4.set_title(</span><span class="s3">'Distribution of Previous Campaign Outcomes'</span><span class="s1">)</span>
+<span class="s1">ax4.set_xlabel(</span><span class="s3">'Previous Campaign Outcome'</span><span class="s1">)</span>
+<span class="s1">ax4.set_ylabel(</span><span class="s3">'Count'</span><span class="s1">)</span>
+<span class="s2">for </span><span class="s1">p </span><span class="s2">in </span><span class="s1">ax4.patches:</span>
+    <span class="s1">ax4.annotate(</span><span class="s3">f'</span><span class="s5">{</span><span class="s1">p.get_height()</span><span class="s5">}</span><span class="s3">'</span><span class="s1">, (p.get_x() + p.get_width() / </span><span class="s4">2.</span><span class="s1">, p.get_height()), </span>
+                 <span class="s1">ha=</span><span class="s3">'center'</span><span class="s1">, va=</span><span class="s3">'center'</span><span class="s1">, xytext=(</span><span class="s4">0</span><span class="s1">, </span><span class="s4">10</span><span class="s1">), textcoords=</span><span class="s3">'offset points'</span><span class="s1">)</span>
+
+<span class="s0"># Adjust layout</span>
+<span class="s1">plt.tight_layout(rect=[</span><span class="s4">0</span><span class="s1">, </span><span class="s4">0</span><span class="s1">, </span><span class="s4">1</span><span class="s1">, </span><span class="s4">0.96</span><span class="s1">])</span>
+<span class="s1">plt.show()</span>
+<span class="s0">#%% md 
+</span>
+<span class="s0">#%% md 
+</span><span class="s1">### Model Evaluation &amp; Further Analysis 
+</span><span class="s0">#%% 
+</span><span class="s1">X = data.drop(</span><span class="s3">'subscription_status'</span><span class="s1">, axis=</span><span class="s4">1</span><span class="s1">)  </span><span class="s0"># Adjust column name as necessary</span>
+<span class="s1">y = data[</span><span class="s3">'subscription_status'</span><span class="s1">]</span>
+<span class="s0"># Split the data into training and testing sets</span>
+<span class="s1">X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=</span><span class="s4">0.2</span><span class="s1">, random_state=</span><span class="s4">42</span><span class="s1">)</span>
+
+<span class="s0"># Preprocess categorical features</span>
+<span class="s1">categorical_features = [</span><span class="s3">'job_type'</span><span class="s1">, </span><span class="s3">'marital_status'</span><span class="s1">, </span><span class="s3">'education_level'</span><span class="s1">, </span><span class="s3">'contact_method'</span><span class="s1">, </span><span class="s3">'call_month'</span><span class="s1">, </span><span class="s3">'previous_campaign_outcome'</span><span class="s1">]</span>
+<span class="s1">numeric_features = [</span><span class="s3">'customer_age'</span><span class="s1">, </span><span class="s3">'call_day'</span><span class="s1">, </span><span class="s3">'call_duration'</span><span class="s1">, </span><span class="s3">'number_of_calls'</span><span class="s1">]</span>
+
+<span class="s0"># Define the preprocessing for numeric features (scaling)</span>
+<span class="s1">numeric_transformer = Pipeline(steps=[</span>
+    <span class="s1">(</span><span class="s3">'scaler'</span><span class="s1">, StandardScaler())</span>
+<span class="s1">])</span>
+
+<span class="s0"># Define the preprocessing for categorical features (encoding)</span>
+<span class="s1">categorical_transformer = Pipeline(steps=[</span>
+    <span class="s1">(</span><span class="s3">'imputer'</span><span class="s1">, SimpleImputer(strategy=</span><span class="s3">'constant'</span><span class="s1">, fill_value=</span><span class="s3">'missing'</span><span class="s1">)),</span>
+    <span class="s1">(</span><span class="s3">'onehot'</span><span class="s1">, OneHotEncoder(handle_unknown=</span><span class="s3">'ignore'</span><span class="s1">))</span>
+<span class="s1">])</span>
+
+<span class="s0"># Combine the preprocessors</span>
+<span class="s1">preprocessor = ColumnTransformer(</span>
+    <span class="s1">transformers=[</span>
+        <span class="s1">(</span><span class="s3">'num'</span><span class="s1">, numeric_transformer, numeric_features),</span>
+        <span class="s1">(</span><span class="s3">'cat'</span><span class="s1">, categorical_transformer, categorical_features)</span>
+    <span class="s1">])</span>
+
+<span class="s0"># Preprocess the training and testing data</span>
+<span class="s1">X_train_processed = preprocessor.fit_transform(X_train)</span>
+<span class="s1">X_test_processed = preprocessor.transform(X_test)</span>
+
+<span class="s0"># Apply SMOTE to balance the dataset</span>
+<span class="s1">smote = SMOTE(random_state=</span><span class="s4">42</span><span class="s1">)</span>
+<span class="s1">X_train_resampled, y_train_resampled = smote.fit_resample(X_train_processed, y_train)</span>
+<span class="s0">#%% 
+</span><span class="s2">from </span><span class="s1">sklearn.linear_model </span><span class="s2">import </span><span class="s1">LogisticRegression</span>
+<span class="s2">from </span><span class="s1">sklearn.metrics </span><span class="s2">import </span><span class="s1">accuracy_score, precision_score, recall_score, f1_score, roc_auc_score</span>
+
+<span class="s0"># Initialize Logistic Regression model</span>
+<span class="s1">log_reg = LogisticRegression(max_iter=</span><span class="s4">1000</span><span class="s1">)</span>
+
+<span class="s0"># Train the model</span>
+<span class="s1">log_reg.fit(X_train_resampled, y_train_resampled)</span>
+
+<span class="s0"># Predict and evaluate</span>
+<span class="s1">y_pred = log_reg.predict(X_test_processed)</span>
+<span class="s1">y_prob = log_reg.predict_proba(X_test_processed)[:, </span><span class="s4">1</span><span class="s1">]</span>
+
+<span class="s1">log_reg_results = {</span>
+    <span class="s3">'Accuracy'</span><span class="s1">: accuracy_score(y_test, y_pred),</span>
+    <span class="s3">'Precision'</span><span class="s1">: precision_score(y_test, y_pred, pos_label=</span><span class="s3">'yes'</span><span class="s1">),</span>
+    <span class="s3">'Recall'</span><span class="s1">: recall_score(y_test, y_pred, pos_label=</span><span class="s3">'yes'</span><span class="s1">),</span>
+    <span class="s3">'F1 Score'</span><span class="s1">: f1_score(y_test, y_pred, pos_label=</span><span class="s3">'yes'</span><span class="s1">),</span>
+    <span class="s3">'ROC AUC'</span><span class="s1">: roc_auc_score(y_test, y_prob)</span>
+<span class="s1">}</span>
+
+<span class="s1">print(</span><span class="s3">&quot;Logistic Regression Results:&quot;</span><span class="s1">)</span>
+<span class="s1">log_reg_results</span>
+<span class="s0">#%% 
+</span><span class="s2">from </span><span class="s1">sklearn.tree </span><span class="s2">import </span><span class="s1">DecisionTreeClassifier</span>
+
+<span class="s0"># Initialize Decision Tree model</span>
+<span class="s1">decision_tree = DecisionTreeClassifier()</span>
+
+<span class="s0"># Train the model</span>
+<span class="s1">decision_tree.fit(X_train_resampled, y_train_resampled)</span>
+
+<span class="s0"># Predict and evaluate</span>
+<span class="s1">y_pred = decision_tree.predict(X_test_processed)</span>
+<span class="s1">y_prob = decision_tree.predict_proba(X_test_processed)[:, </span><span class="s4">1</span><span class="s1">]</span>
+
+<span class="s1">decision_tree_results = {</span>
+    <span class="s3">'Accuracy'</span><span class="s1">: accuracy_score(y_test, y_pred),</span>
+    <span class="s3">'Precision'</span><span class="s1">: precision_score(y_test, y_pred, pos_label=</span><span class="s3">'yes'</span><span class="s1">),</span>
+    <span class="s3">'Recall'</span><span class="s1">: recall_score(y_test, y_pred, pos_label=</span><span class="s3">'yes'</span><span class="s1">),</span>
+    <span class="s3">'F1 Score'</span><span class="s1">: f1_score(y_test, y_pred, pos_label=</span><span class="s3">'yes'</span><span class="s1">),</span>
+    <span class="s3">'ROC AUC'</span><span class="s1">: roc_auc_score(y_test, y_prob)</span>
+<span class="s1">}</span>
+
+<span class="s1">print(</span><span class="s3">&quot;Decision Tree Results:&quot;</span><span class="s1">)</span>
+<span class="s1">decision_tree_results</span>
+<span class="s0">#%% 
+</span><span class="s2">from </span><span class="s1">sklearn.ensemble </span><span class="s2">import </span><span class="s1">RandomForestClassifier</span>
+
+<span class="s0"># Initialize Random Forest model</span>
+<span class="s1">random_forest = RandomForestClassifier(random_state=</span><span class="s4">42</span><span class="s1">)</span>
+
+<span class="s0"># Train the model</span>
+<span class="s1">random_forest.fit(X_train_resampled, y_train_resampled)</span>
+
+<span class="s0"># Predict and evaluate</span>
+<span class="s1">y_pred = random_forest.predict(X_test_processed)</span>
+<span class="s1">y_prob = random_forest.predict_proba(X_test_processed)[:, </span><span class="s4">1</span><span class="s1">]</span>
+
+<span class="s1">random_forest_results = {</span>
+    <span class="s3">'Accuracy'</span><span class="s1">: accuracy_score(y_test, y_pred),</span>
+    <span class="s3">'Precision'</span><span class="s1">: precision_score(y_test, y_pred, pos_label=</span><span class="s3">'yes'</span><span class="s1">),</span>
+    <span class="s3">'Recall'</span><span class="s1">: recall_score(y_test, y_pred, pos_label=</span><span class="s3">'yes'</span><span class="s1">),</span>
+    <span class="s3">'F1 Score'</span><span class="s1">: f1_score(y_test, y_pred, pos_label=</span><span class="s3">'yes'</span><span class="s1">),</span>
+    <span class="s3">'ROC AUC'</span><span class="s1">: roc_auc_score(y_test, y_prob)</span>
+<span class="s1">}</span>
+
+<span class="s1">print(</span><span class="s3">&quot;Random Forest Results:&quot;</span><span class="s1">)</span>
+<span class="s1">random_forest_results</span>
+
+<span class="s0">#%% 
+</span><span class="s2">from </span><span class="s1">sklearn.ensemble </span><span class="s2">import </span><span class="s1">GradientBoostingClassifier</span>
+
+<span class="s0"># Initialize Gradient Boosting model</span>
+<span class="s1">gradient_boosting = GradientBoostingClassifier()</span>
+
+<span class="s0"># Train the model</span>
+<span class="s1">gradient_boosting.fit(X_train_resampled, y_train_resampled)</span>
+
+<span class="s0"># Predict and evaluate</span>
+<span class="s1">y_pred = gradient_boosting.predict(X_test_processed)</span>
+<span class="s1">y_prob = gradient_boosting.predict_proba(X_test_processed)[:, </span><span class="s4">1</span><span class="s1">]</span>
+
+<span class="s1">gradient_boosting_results = {</span>
+    <span class="s3">'Accuracy'</span><span class="s1">: accuracy_score(y_test, y_pred),</span>
+    <span class="s3">'Precision'</span><span class="s1">: precision_score(y_test, y_pred, pos_label=</span><span class="s3">'yes'</span><span class="s1">),</span>
+    <span class="s3">'Recall'</span><span class="s1">: recall_score(y_test, y_pred, pos_label=</span><span class="s3">'yes'</span><span class="s1">),</span>
+    <span class="s3">'F1 Score'</span><span class="s1">: f1_score(y_test, y_pred, pos_label=</span><span class="s3">'yes'</span><span class="s1">),</span>
+    <span class="s3">'ROC AUC'</span><span class="s1">: roc_auc_score(y_test, y_prob)</span>
+<span class="s1">}</span>
+
+<span class="s1">print(</span><span class="s3">&quot;Gradient Boosting Results:&quot;</span><span class="s1">)</span>
+<span class="s1">gradient_boosting_results</span>
+<span class="s0">#%% 
+# Store results in a dictionary</span>
+<span class="s1">results = {</span>
+    <span class="s3">'Logistic Regression'</span><span class="s1">: log_reg_results,</span>
+    <span class="s3">'Decision Tree'</span><span class="s1">: decision_tree_results,</span>
+    <span class="s3">'Random Forest'</span><span class="s1">: random_forest_results,</span>
+    <span class="s3">'Gradient Boosting'</span><span class="s1">: gradient_boosting_results</span>
+<span class="s1">}</span>
+
+<span class="s0"># Convert results to DataFrame for better readability</span>
+<span class="s1">results_df = pd.DataFrame(results).T</span>
+
+<span class="s0"># Display the results table</span>
+<span class="s1">results_df</span>
+<span class="s0">#%% md 
+</span><span class="s1">### Model Evaluation and Comparison 
+ 
+The table below summarizes the performance of different machine learning models evaluated on the dataset: 
+ 
+| Model               | Accuracy | Precision | Recall  | F1 Score | ROC AUC  | 
+|---------------------|----------|-----------|---------|----------|----------| 
+| Logistic Regression | 0.834    | 0.403     | 0.791   | 0.534    | 0.895    | 
+| Decision Tree       | 0.861    | 0.433     | 0.500   | 0.464    | 0.705    | 
+| Random Forest       | 0.893    | 0.560     | 0.522   | 0.541    | 0.904    | 
+| Gradient Boosting   | 0.870    | 0.476     | 0.753   | 0.583    | 0.906    | 
+ 
+### Analysis: 
+ 
+1. **Accuracy**: 
+   - **Random Forest** achieves the highest accuracy at **0.893**, closely followed by **Gradient Boosting** at **0.870**. 
+   - **Logistic Regression** and **Decision Tree** perform slightly lower with accuracies of **0.834** and **0.861**, respectively. 
+ 
+2. **Precision**: 
+   - **Random Forest** also has the highest precision (**0.560**), indicating it is better at avoiding false positives compared to other models. 
+   - **Gradient Boosting** shows reasonable precision at **0.476**. 
+   - **Logistic Regression** and **Decision Tree** have lower precision, suggesting they may produce more false positives. 
+ 
+3. **Recall**: 
+   - **Logistic Regression** has the highest recall (**0.791**), which means it is effective at capturing the majority of true positives. 
+   - **Gradient Boosting** also performs well in terms of recall (**0.753**), making it reliable for identifying positive cases. 
+   - **Decision Tree** has the lowest recall (**0.500**), indicating it might miss a significant number of positive cases. 
+ 
+4. **F1 Score**: 
+   - **Gradient Boosting** achieves the highest F1 Score (**0.583**), balancing both precision and recall effectively. 
+   - **Random Forest** and **Logistic Regression** follow with F1 Scores of **0.541** and **0.534**, respectively. 
+   - **Decision Tree** has the lowest F1 Score (**0.464**), showing it struggles to balance precision and recall. 
+ 
+5. **ROC AUC**: 
+   - **Gradient Boosting** slightly edges out **Random Forest** with an ROC AUC of **0.906**, indicating it has the best overall ability to distinguish between positive and negative classes. 
+   - **Logistic Regression** also performs well with an ROC AUC of **0.895**. 
+   - **Decision Tree** lags behind with a significantly lower ROC AUC (**0.705**), suggesting it is less reliable for distinguishing between classes. 
+ 
+### Recommendation: 
+ 
+- **Best Performing Model**: **Gradient Boosting** is recommended as the best-performing model overall. It offers a strong balance of accuracy, precision, recall, F1 score, and ROC AUC, making it a robust choice for this classification task. 
+- **Alternative Model**: **Random Forest** is a close alternative, particularly if the priority is high accuracy and precision, although it slightly underperforms compared to Gradient Boosting in recall and F1 Score. 
+ 
+### Next Steps: 
+ 
+- **Model Tuning**: Further tuning of the Gradient Boosting parameters could potentially improve performance even further. 
+- **Model Deployment**: Based on its strong performance metrics, consider deploying the Gradient Boosting model in a production environment for predicting outcomes on new data. 
+ 
+</span><span class="s0">#%% 
+# Discretizing 'customer_age' into age groups</span>
+<span class="s1">bins = [</span><span class="s4">18</span><span class="s1">, </span><span class="s4">30</span><span class="s1">, </span><span class="s4">40</span><span class="s1">, </span><span class="s4">50</span><span class="s1">, </span><span class="s4">60</span><span class="s1">, </span><span class="s4">70</span><span class="s1">, </span><span class="s4">80</span><span class="s1">, </span><span class="s4">95</span><span class="s1">]</span>
+<span class="s1">labels = [</span><span class="s3">'18-30'</span><span class="s1">, </span><span class="s3">'31-40'</span><span class="s1">, </span><span class="s3">'41-50'</span><span class="s1">, </span><span class="s3">'51-60'</span><span class="s1">, </span><span class="s3">'61-70'</span><span class="s1">, </span><span class="s3">'71-80'</span><span class="s1">, </span><span class="s3">'81-95'</span><span class="s1">]</span>
+<span class="s1">data[</span><span class="s3">'age_group'</span><span class="s1">] = pd.cut(data[</span><span class="s3">'customer_age'</span><span class="s1">], bins=bins, labels=labels)</span>
+
+<span class="s0"># Analyze the subscription status by age group</span>
+<span class="s1">age_group_analysis = data.groupby(</span><span class="s3">'age_group'</span><span class="s1">)[</span><span class="s3">'subscription_status'</span><span class="s1">].value_counts(normalize=</span><span class="s2">True</span><span class="s1">).unstack()</span>
+<span class="s1">age_group_analysis</span>
+<span class="s0">#%% md 
+</span><span class="s1">### Findings from Age Group Analysis 
+ 
+The analysis of subscription rates across different age groups reveals the following trends: 
+ 
+- **Younger Age Groups (18-30)**: Approximately 16% of individuals in this group subscribed, indicating a moderate response rate. 
+- **Middle Age Groups (31-60)**: Subscription rates are lower in these groups, especially between 41-50 years, where only around 9% subscribed. This suggests that individuals in this age range are less likely to subscribe. 
+- **Older Age Groups (61-95)**: Interestingly, the subscription rates increase significantly among older individuals. For those aged 71-80, the subscription rate is the highest at about 45%, followed by 43% for the 81-95 age group. 
+ 
+### Conclusion: 
+- The findings suggest that older individuals (especially those over 60) are more responsive to the campaign, while middle-aged individuals are less likely to subscribe. This could guide future targeting strategies to focus more on older demographics. 
+ 
+### Next Steps: 
+- Consider segmenting future campaigns by age to tailor messaging and offers to different age groups. 
+- Further investigate why older individuals are more likely to subscribe and if specific factors drive this trend. 
+ 
+</span><span class="s0">#%% 
+# Analyzing subscription status by call day</span>
+<span class="s1">call_day_analysis = data.groupby(</span><span class="s3">'call_day'</span><span class="s1">)[</span><span class="s3">'subscription_status'</span><span class="s1">].value_counts(normalize=</span><span class="s2">True</span><span class="s1">).unstack()</span>
+<span class="s1">call_day_analysis</span>
+<span class="s0">#%% 
+# Analyzing subscription status by call month</span>
+<span class="s1">call_month_analysis = data.groupby(</span><span class="s3">'call_month'</span><span class="s1">)[</span><span class="s3">'subscription_status'</span><span class="s1">].value_counts(normalize=</span><span class="s2">True</span><span class="s1">).unstack()</span>
+<span class="s1">call_month_analysis</span>
+<span class="s0">#%% md 
+</span><span class="s1">### Findings from Call Timing Analysis 
+ 
+The analysis of subscription rates across different days of the month reveals some important insights: 
+ 
+- **Early Month (Day 1-10)**: The first day of the month shows a relatively higher subscription rate (around 28%). However, for the rest of the first ten days, the subscription rates are generally lower, especially on days 6 and 7, where the rate drops to around 9%. 
+- **Mid-Month (Day 11-20)**: During the middle of the month, subscription rates remain moderate, with most days showing a subscription rate between 10-15%. However, days 19 and 20 have noticeably lower subscription rates (around 7%). 
+- **End of Month (Day 21-31)**: The subscription rates increase again towards the end of the month, with several days showing higher success rates. Day 31, for instance, has a subscription rate of approximately 7%. 
+ 
+The analysis of subscription rates based on the month reveals the following trends: 
+ 
+- **High Subscription Months**: March shows the highest subscription rate with approximately 52%, followed by December, September, and October, all of which have subscription rates above 43%. 
+- **Low Subscription Months**: May has the lowest subscription rate at around 7%, followed by July, June, January, and November, all of which have subscription rates around 10%. 
+ 
+### Conclusion: 
+- The analysis suggests that certain days at the beginning and end of the month are more effective for making calls, especially the 1st, 28th, 29th, and 31st days, where subscription rates are higher. 
+- Conversely, the middle of the month appears to be less effective, particularly around the 19th and 20th days. 
+ 
+- **Seasonal Influence**: The data suggests that subscription rates vary significantly by month, with March being particularly successful, possibly due to seasonal or promotional factors. 
+- **Low Performance in Summer**: The summer months (May, June, July) tend to have lower subscription rates, which could indicate a period of reduced customer engagement. 
+ 
+### Next Steps: 
+- **Optimal Timing**: Focus future call campaigns on the 1st, and the last few days of the month, which appear to yield better results. 
+- **Further Analysis**: Investigate why certain days are more effective and explore if this pattern holds over multiple months. 
+- **Focus on High-Performing Months**: Concentrate marketing efforts and resources during the high subscription months, such as March and December, to maximize returns. 
+- **Investigate Low Subscription Rates**: Explore why the summer months see lower subscription rates and consider adjusting the strategy during these periods to improve engagement. 
+- **Seasonal Campaigns**: Consider running specific campaigns or promotions during low-performing months to counteract the natural dip in subscriptions. 
+ 
+</span><span class="s0">#%% md 
+</span>
+<span class="s0">#%% 
+# Correlation between call_duration and subscription_status</span>
+<span class="s0"># Binning 'call_duration' into discrete categories</span>
+<span class="s1">call_duration_bins = [</span><span class="s4">0</span><span class="s1">, </span><span class="s4">60</span><span class="s1">, </span><span class="s4">180</span><span class="s1">, </span><span class="s4">300</span><span class="s1">, </span><span class="s4">600</span><span class="s1">, data[</span><span class="s3">'call_duration'</span><span class="s1">].max()]</span>
+<span class="s1">call_duration_labels = [</span><span class="s3">'0-1 min'</span><span class="s1">, </span><span class="s3">'1-3 min'</span><span class="s1">, </span><span class="s3">'3-5 min'</span><span class="s1">, </span><span class="s3">'5-10 min'</span><span class="s1">, </span><span class="s3">'10+ min'</span><span class="s1">]</span>
+<span class="s1">data[</span><span class="s3">'call_duration_group'</span><span class="s1">] = pd.cut(data[</span><span class="s3">'call_duration'</span><span class="s1">], bins=call_duration_bins, labels=call_duration_labels)</span>
+
+<span class="s0"># Analyze the relationship between call duration group and subscription status</span>
+<span class="s1">call_duration_analysis = data.groupby(</span><span class="s3">'call_duration_group'</span><span class="s1">)[</span><span class="s3">'subscription_status'</span><span class="s1">].value_counts(normalize=</span><span class="s2">True</span><span class="s1">).unstack()</span>
+<span class="s1">call_duration_analysis</span>
+
+<span class="s0">#%% 
+# Visualize the relationship between call duration and subscription status</span>
+<span class="s1">sns.boxplot(x=</span><span class="s3">'subscription_status'</span><span class="s1">, y=</span><span class="s3">'call_duration'</span><span class="s1">, data=data)</span>
+<span class="s1">plt.title(</span><span class="s3">'Call Duration vs Subscription Status'</span><span class="s1">)</span>
+<span class="s1">plt.show()</span>
+<span class="s0">#%% md 
+</span><span class="s1">### Findings from Call Duration Group vs Subscription Status 
+ 
+This analysis categorizes call durations into groups and examines the corresponding subscription rates: 
+ 
+- **0-1 min**: Extremely low subscription rate (0.19%), indicating that very short calls are almost never successful in securing a subscription. 
+- **1-3 min**: Slightly higher subscription rate (3.91%), but still relatively low, suggesting limited effectiveness for short calls. 
+- **3-5 min**: Noticeable increase in subscription rate (10.92%), indicating that conversations in this duration are more likely to result in a subscription. 
+- **5-10 min**: Further improvement with a subscription rate of 19.15%, showing that longer calls continue to perform better. 
+- **10+ min**: The highest subscription rate (48.36%) is observed in this group, confirming that calls longer than 10 minutes are significantly more effective at converting customers. 
+ 
+The boxplot visualization highlights the relationship between call duration and subscription status: 
+ 
+- **Longer Call Durations Lead to Higher Subscription Rates**: The median call duration for customers who subscribed (`yes`) is significantly higher compared to those who did not (`no`). This suggests that longer calls are more effective in converting customers. 
+- **Distribution and Outliers**: The distribution for both categories shows that while the majority of calls are relatively short, there are some outliers with very long durations. These outliers are more common among the subscribed group, indicating that extended conversations could be key in persuading customers. 
+- **Insight**: Customers who stayed on the call longer were more likely to subscribe, suggesting that engaging and informative calls could increase subscription rates. 
+ 
+ 
+### Conclusion: 
+- **Impact of Call Duration**: The data clearly shows that longer calls correlate with higher subscription rates. Calls lasting more than 10 minutes are particularly effective, with nearly half of these calls resulting in a subscription. 
+- **Strategic Implications**: Short calls (under 3 minutes) are much less effective and could indicate a need for better engagement strategies early in the conversation. 
+ 
+- **Focus on Call Duration**: This analysis suggests that training call center agents to engage customers for longer periods, when appropriate, could improve subscription rates. 
+- **Targeted Follow-up**: For calls that are shorter, consider follow-up strategies to re-engage the customer, potentially leading to higher conversion in subsequent interactions. 
+ 
+ 
+### Next Steps: 
+- **Focus on Extending Call Durations**: Encourage call center agents to aim for longer conversations, particularly targeting the 5-10 minute range or beyond. 
+- **Early Engagement**: Develop strategies to improve early engagement, potentially turning short calls into more meaningful and longer interactions. 
+- **Call Monitoring and Training**: Implement monitoring and training programs to help agents understand the importance of call duration and techniques to extend productive conversations. 
+ 
+- **Agent Training**: Develop training programs focused on effective communication techniques to sustain longer, more meaningful conversations. 
+- **Analyze Outliers**: Further investigate the outliers to understand the context of very long calls and how they contributed to successful subscriptions. 
+ 
+</span><span class="s0">#%% 
+# Correlation between number_of_calls and subscription_status</span>
+<span class="s0"># Binning 'number_of_calls' into discrete categories for better analysis</span>
+<span class="s1">call_frequency_bins = [</span><span class="s4">1</span><span class="s1">, </span><span class="s4">2</span><span class="s1">, </span><span class="s4">3</span><span class="s1">, </span><span class="s4">4</span><span class="s1">, </span><span class="s4">5</span><span class="s1">, data[</span><span class="s3">'number_of_calls'</span><span class="s1">].max()]</span>
+<span class="s1">call_frequency_labels = [</span><span class="s3">'1'</span><span class="s1">, </span><span class="s3">'2'</span><span class="s1">, </span><span class="s3">'3'</span><span class="s1">, </span><span class="s3">'4'</span><span class="s1">, </span><span class="s3">'5+'</span><span class="s1">]</span>
+<span class="s1">data[</span><span class="s3">'call_frequency_group'</span><span class="s1">] = pd.cut(data[</span><span class="s3">'number_of_calls'</span><span class="s1">], bins=call_frequency_bins, labels=call_frequency_labels)</span>
+
+<span class="s0"># Analyze the relationship between the number of calls and subscription status</span>
+<span class="s1">call_frequency_analysis = data.groupby(</span><span class="s3">'call_frequency_group'</span><span class="s1">)[</span><span class="s3">'subscription_status'</span><span class="s1">].value_counts(normalize=</span><span class="s2">True</span><span class="s1">).unstack()</span>
+<span class="s1">call_frequency_analysis</span>
+
+
+
+<span class="s0">#%% 
+# Use countplot instead of barplot to visualize the relationship between number of calls and subscription status</span>
+<span class="s1">sns.countplot(x=</span><span class="s3">'call_frequency_group'</span><span class="s1">, hue=</span><span class="s3">'subscription_status'</span><span class="s1">, data=data)</span>
+<span class="s1">plt.title(</span><span class="s3">'Number of Calls vs Subscription Status'</span><span class="s1">)</span>
+<span class="s1">plt.show()</span>
+<span class="s0">#%% md 
+</span><span class="s1">### Findings from Call Frequency vs Subscription Status 
+ 
+This analysis examines the relationship between the number of calls made to a customer and their likelihood of subscribing: 
+ 
+- **1 Call**: The subscription rate is 11.20%, which indicates a moderate success rate for the first call. 
+- **2 Calls**: The subscription rate remains similar at 11.19%, suggesting that making a second call does not significantly increase the likelihood of a subscription. 
+- **3 Calls**: The subscription rate drops slightly to 9.00%, indicating diminishing returns as the number of calls increases. 
+- **4 Calls**: The subscription rate further decreases to 7.88%, showing that by the fourth call, the likelihood of securing a subscription is even lower. 
+- **5+ Calls**: The subscription rate is lowest at 5.81%, suggesting that frequent calls are the least effective in converting customers. 
+ 
+The bar plot visualizes the relationship between the number of calls made to a customer and their subscription status: 
+ 
+- **1 Call**: The vast majority of customers received only one call. Among them, a higher proportion did not subscribe, but a significant number did, indicating that the first call has the best chance of success. 
+- **2 Calls**: The number of customers receiving a second call drops, with a similar pattern of more &quot;no&quot; responses than &quot;yes,&quot; suggesting limited effectiveness of the second call. 
+- **3-4 Calls**: As the number of calls increases, the proportion of customers who subscribe decreases noticeably. This suggests diminishing returns with each additional call. 
+- **5+ Calls**: Customers who received five or more calls had the lowest subscription rate, with very few &quot;yes&quot; responses, indicating that frequent follow-up calls are largely ineffective. 
+ 
+ 
+### Conclusion: 
+- **Diminishing Returns with Increased Calls**: The data shows a clear trend of diminishing returns with each additional call. While a single or second call has a reasonable chance of success, further calls progressively lower the likelihood of conversion. 
+- **Optimal Call Strategy**: It appears that if a customer does not subscribe after the first or second call, additional calls are less likely to change their mind and may even decrease the chance of success. 
+ 
+- **Effective First Call**: The first call is critical and should be optimized, as it has the highest potential for securing a subscription. 
+- **Diminishing Returns**: Additional calls beyond the second one show significantly lower success rates, suggesting that repeated follow-ups may not be an effective strategy. 
+- **Resource Allocation**: Focus resources on making the first and second calls as effective as possible, and consider alternative follow-up methods instead of multiple phone calls. 
+ 
+ 
+### Next Steps: 
+- **Limit Call Frequency**: Consider limiting the number of calls to a maximum of two per customer to optimize resource use and avoid diminishing returns. 
+- **Follow-up Strategies**: Develop alternative follow-up strategies (e.g., personalized emails or SMS) after the second call rather than continuing with phone calls. 
+- **Customer Segmentation**: Segment customers based on their response to the first call and tailor follow-up actions accordingly. 
+ 
+- **Optimize First Call Strategy**: Enhance the content and delivery of the first call to maximize its impact. 
+- **Limit Follow-Up Calls**: Reconsider the strategy of making more than two calls, as the data suggests these additional calls are unlikely to result in a subscription. 
+- **Alternative Follow-Ups**: Implement alternative follow-up strategies such as emails or SMS after the second call to maintain engagement without over-calling. 
+</span><span class="s0">#%% md 
+</span><span class="s1">### Conclusion  and Recommendation</span></pre>
+</body>
+</html>
